@@ -43,11 +43,11 @@ audio_stats = {
     "last_uid": None,
     "recent_emotions": [],
     "emotion_counts": {},  # Track count of each emotion detected
-    "emotion_score": 75,  # Emotion meter: 0 to 100 (starts at 75)
+    "rizz_score": 75,  # Rizz meter: 0 to 100 (starts at 75)
     "recent_notifications": []  # Track last 10 notifications sent
 }
 
-# Emotion categories for Emotion Meter
+# Emotion categories for Rizz Meter
 POSITIVE_EMOTIONS = {
     "Joy", "Amusement", "Satisfaction", "Excitement", "Pride", "Triumph",
     "Relief", "Romance", "Desire", "Admiration", "Adoration", "Love",
@@ -65,9 +65,9 @@ NEUTRAL_EMOTIONS = {
 }
 
 
-def update_emotion_score(emotions: list):
+def update_rizz_score(emotions: list):
     """
-    Update emotion score based on detected emotions.
+    Update rizz score based on detected emotions.
     Positive emotions add points, negative emotions subtract.
     Score ranges from 0 to 100 (starts at 75).
 
@@ -80,26 +80,26 @@ def update_emotion_score(emotions: list):
     adjustment = 0
     for emotion in emotions:
         emotion_name = emotion['name']
-        emotion_value = emotion['score']  # 0-1 scale
+        emotion_score = emotion['score']  # 0-1 scale
 
         if emotion_name in POSITIVE_EMOTIONS:
-            # Positive emotions add to score (scaled by emotion intensity)
-            adjustment += emotion_value * 10  # Max +10 per emotion
+            # Positive emotions add to rizz (scaled by emotion intensity)
+            adjustment += emotion_score * 10  # Max +10 per emotion
         elif emotion_name in NEGATIVE_EMOTIONS:
-            # Negative emotions subtract from score
-            adjustment -= emotion_value * 10  # Max -10 per emotion
+            # Negative emotions subtract from rizz
+            adjustment -= emotion_score * 10  # Max -10 per emotion
         # Neutral emotions don't change the score
 
     # Update the score and clamp to 0 to 100 range
-    audio_stats["emotion_score"] = max(0, min(100, audio_stats["emotion_score"] + adjustment))
+    audio_stats["rizz_score"] = max(0, min(100, audio_stats["rizz_score"] + adjustment))
 
 
-def get_emotion_status_text(score: float) -> str:
+def get_rizz_status_text(score: float) -> str:
     """
-    Get the emotion status text based on score.
+    Get the rizz status text based on score.
 
     Args:
-        score: Emotion score from 0 to 100
+        score: Rizz score from 0 to 100
 
     Returns:
         Status text with emoji
@@ -112,13 +112,13 @@ def get_emotion_status_text(score: float) -> str:
         return "😔 Negative Energy"
 
 
-def get_emotion_notification_message(score: float, emotions: list) -> str:
+def get_rizz_notification_message(score: float, emotions: list) -> str:
     """
-    Generate a short notification message with emotion status, inspirational message, and emotions.
-    Format: Emotion score + Inspirational message + Emotions
+    Generate a short notification message with rizz status, inspirational message, and emotions.
+    Format: Rizz score + Inspirational message + Emotions
 
     Args:
-        score: Emotion score from 0 to 100
+        score: Rizz score from 0 to 100
         emotions: List of emotion names (top 3)
 
     Returns:
@@ -129,7 +129,7 @@ def get_emotion_notification_message(score: float, emotions: list) -> str:
     emotion_str = ", ".join(emotions)
     score_text = f"{score:.0f}%"
 
-    # Low score (< 40) - motivational messages
+    # Low rizz (< 40) - motivational messages
     if score < 40:
         messages = [
             "Level up bro! 💪",
@@ -139,9 +139,9 @@ def get_emotion_notification_message(score: float, emotions: list) -> str:
             "Comeback mode! ⚡"
         ]
         inspirational = random.choice(messages)
-        return f"⚡ Mood: {score_text} | {inspirational} | {emotion_str}"
+        return f"⚡ Rizz: {score_text} | {inspirational} | {emotion_str}"
 
-    # Medium score (40-80) - neutral messages
+    # Medium rizz (40-80) - neutral messages
     elif score <= 80:
         messages = [
             "Stay balanced! 🎯",
@@ -151,9 +151,9 @@ def get_emotion_notification_message(score: float, emotions: list) -> str:
             "Stay cool! 😌"
         ]
         inspirational = random.choice(messages)
-        return f"⚡ Mood: {score_text} | {inspirational} | {emotion_str}"
+        return f"⚡ Rizz: {score_text} | {inspirational} | {emotion_str}"
 
-    # High score (> 80) - positive messages
+    # High rizz (> 80) - positive messages
     else:
         messages = [
             "Killing it! 🔥",
@@ -163,7 +163,7 @@ def get_emotion_notification_message(score: float, emotions: list) -> str:
             "Boss mode! 😎"
         ]
         inspirational = random.choice(messages)
-        return f"⚡ Mood: {score_text} | {inspirational} | {emotion_str}"
+        return f"⚡ Rizz: {score_text} | {inspirational} | {emotion_str}"
 
 
 # Load emotion notification configuration
@@ -1023,9 +1023,9 @@ async def handle_audio_stream(
                                         audio_stats["emotion_counts"][emotion_name] = 0
                                     audio_stats["emotion_counts"][emotion_name] += 1
 
-                                # Update emotion score based on detected emotions
-                                update_emotion_score(pred['top_3_emotions'])
-                                print(f"📊 Emotion Score updated: {audio_stats['emotion_score']:.1f}")
+                                # Update rizz score based on detected emotions
+                                update_rizz_score(pred['top_3_emotions'])
+                                print(f"📊 Rizz Score updated: {audio_stats['rizz_score']:.1f}")
 
                                 break
                     if recent_emotions:
@@ -1061,10 +1061,10 @@ async def handle_audio_stream(
                         if trigger_result['triggered']:
                             print(f"🔔 Emotion trigger detected! {trigger_result['total_triggers']} emotions matched")
 
-                            # Format notification message: Emotion score first + emotions + motivational if needed
+                            # Format notification message: Rizz first + emotions + motivational if needed
                             emotion_names = [e['name'] for e in trigger_result['emotions'][:3]]
-                            notification_msg = get_emotion_notification_message(
-                                audio_stats['emotion_score'],
+                            notification_msg = get_rizz_notification_message(
+                                audio_stats['rizz_score'],
                                 emotion_names
                             )
 
@@ -1213,7 +1213,7 @@ async def root():
     <!DOCTYPE html>
     <html>
     <head>
-        <title>🎭 Real time audio - Emotion Meter</title>
+        <title>⚡ Rizz Meter - Omi + Hume</title>
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
             body {{
@@ -1471,7 +1471,7 @@ async def root():
     </head>
     <body>
         <div class="container">
-            <h1>🎭 Emotion Meter <span style="font-size: 0.5em; color: #666;">Real time audio</span> <span class="status online">ONLINE</span></h1>
+            <h1>⚡ Rizz Meter <span style="font-size: 0.5em; color: #666;">Omi + Hume</span> <span class="status online">ONLINE</span></h1>
             <p style="text-align: center; color: #666; font-size: 16px; margin: -10px 0 5px 0; font-style: italic;">
                 Emotion detection based on your tone and speech prosody
             </p>
@@ -1510,17 +1510,17 @@ async def root():
             ''' if audio_stats['last_request_time'] else '<p style="color: #666; margin: 20px 0;">No audio received yet. Waiting for Omi device to send data...</p>'}
 
             <div style="margin: 20px 0; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
-                <h3 style="color: white; margin: 0 0 15px 0;">🎭 Emotion Meter</h3>
+                <h3 style="color: white; margin: 0 0 15px 0;">⚡ Rizz Meter</h3>
                 <div style="background: rgba(255,255,255,0.2); border-radius: 20px; height: 40px; position: relative; overflow: hidden;">
-                    {f'''<div style="position: absolute; left: 0; width: {audio_stats.get('emotion_score', 75)}%; height: 100%; background: {'linear-gradient(90deg, #4ade80, #22c55e)' if audio_stats.get('emotion_score', 75) >= 80 else 'linear-gradient(90deg, #60a5fa, #3b82f6)' if audio_stats.get('emotion_score', 75) >= 40 else 'linear-gradient(90deg, #f87171, #ef4444)'}; transition: all 0.5s ease;"></div>''' if audio_stats.get('emotion_score') is not None else ''}
+                    {f'''<div style="position: absolute; left: 0; width: {audio_stats.get('rizz_score', 75)}%; height: 100%; background: {'linear-gradient(90deg, #4ade80, #22c55e)' if audio_stats.get('rizz_score', 75) >= 80 else 'linear-gradient(90deg, #60a5fa, #3b82f6)' if audio_stats.get('rizz_score', 75) >= 40 else 'linear-gradient(90deg, #f87171, #ef4444)'}; transition: all 0.5s ease;"></div>''' if audio_stats.get('rizz_score') is not None else ''}
                 </div>
                 <div style="display: flex; justify-content: space-between; margin-top: 10px; color: white; font-size: 12px;">
                     <span>0%</span>
-                    <span style="font-size: 24px; font-weight: bold;">{audio_stats.get('emotion_score', 75):.1f}%</span>
+                    <span style="font-size: 24px; font-weight: bold;">{audio_stats.get('rizz_score', 75):.1f}%</span>
                     <span>100%</span>
                 </div>
                 <p style="color: rgba(255,255,255,0.9); font-size: 12px; text-align: center; margin: 10px 0 0 0;">
-                    {'😎 Positive Vibes!' if audio_stats.get('emotion_score', 75) > 80 else '😐 Neutral Energy' if audio_stats.get('emotion_score', 75) >= 40 else '😔 Negative Energy'}
+                    {'😎 Positive Vibes!' if audio_stats.get('rizz_score', 75) > 80 else '😐 Neutral Energy' if audio_stats.get('rizz_score', 75) >= 40 else '😔 Negative Energy'}
                 </p>
                 {f'''
                 <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.3);">
@@ -1836,7 +1836,7 @@ async def reset_stats():
         "last_uid": None,
         "recent_emotions": [],
         "emotion_counts": {},
-        "emotion_score": 75,
+        "rizz_score": 75,
         "recent_notifications": []
     }
     return {"message": "Statistics reset successfully", "stats": audio_stats}
