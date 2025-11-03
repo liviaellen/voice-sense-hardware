@@ -833,7 +833,7 @@ async def handle_audio_stream(
     uid: str = Query(..., description="User ID"),
     analyze_emotion: bool = Query(True, description="Whether to analyze emotions with Hume AI"),
     save_to_gcs: bool = Query(True, description="Whether to save audio to Google Cloud Storage"),
-    send_notification: Optional[bool] = Query(None, description="Override notification setting (uses config default if not specified)"),
+    enable_notification: Optional[bool] = Query(None, description="Override notification setting (uses config default if not specified)"),
     emotion_filters: Optional[str] = Query(None, description="Override emotion filters (uses config default if not specified)")
 ):
     """
@@ -844,7 +844,7 @@ async def handle_audio_stream(
         - uid: User unique ID
         - analyze_emotion: Whether to analyze emotions with Hume AI (default: True)
         - save_to_gcs: Whether to save audio to GCS (default: True)
-        - send_notification: Whether to send Omi notification (default: False)
+        - enable_notification: Whether to send Omi notification (default: False)
         - emotion_filters: JSON string of emotion:threshold pairs
                           Examples:
                           - '{"Anger":0.7}' - notify only if Anger >= 0.7
@@ -859,10 +859,10 @@ async def handle_audio_stream(
         POST /audio?sample_rate=16000&uid=user123
 
         # With notification for any emotion
-        POST /audio?sample_rate=16000&uid=user123&send_notification=true
+        POST /audio?sample_rate=16000&uid=user123&enable_notification=true
 
         # With notification only for high anger or sadness
-        POST /audio?sample_rate=16000&uid=user123&send_notification=true&emotion_filters={"Anger":0.7,"Sadness":0.6}
+        POST /audio?sample_rate=16000&uid=user123&enable_notification=true&emotion_filters={"Anger":0.7,"Sadness":0.6}
     """
     try:
         # Update stats
@@ -926,8 +926,8 @@ async def handle_audio_stream(
                         audio_stats["recent_emotions"] = recent_emotions
 
                     # Check emotion triggers and send notification
-                    # Use config default if send_notification not explicitly provided
-                    should_notify = send_notification if send_notification is not None else EMOTION_CONFIG.get('notification_enabled', False)
+                    # Use config default if enable_notification not explicitly provided
+                    should_notify = enable_notification if enable_notification is not None else EMOTION_CONFIG.get('notification_enabled', False)
                     print(f"🔔 Notification check: should_notify={should_notify}, has_predictions={bool(hume_results.get('predictions'))}")
 
                     if should_notify and hume_results.get('predictions'):
@@ -1065,41 +1065,6 @@ async def root():
             </div>
         '''
 
-    # Build notifications HTML
-    notifications_html = ''
-    if audio_stats['recent_notifications']:
-        notification_items = []
-        for notif in audio_stats['recent_notifications'][:5]:
-            masked_uid = notif['uid'][:4] + '****' if len(notif['uid']) > 4 else notif['uid']
-            notification_items.append(f'''
-                <div style="background: rgba(255,255,255,0.2); padding: 10px; margin-bottom: 10px; border-radius: 5px; border-left: 3px solid rgba(255,255,255,0.5);">
-                    <p style="color: white; font-size: 13px; margin: 0 0 5px 0; font-weight: bold;">
-                        {notif['message']}
-                    </p>
-                    <p style="color: rgba(255,255,255,0.7); font-size: 11px; margin: 0;">
-                        <span style="margin-right: 10px;">🕒 {notif['timestamp']}</span>
-                        <span>👤 {masked_uid}</span>
-                    </p>
-                </div>
-            ''')
-
-        notifications_html = f'''
-            <div style="margin: 20px 0; padding: 20px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
-                <h3 style="color: white; margin: 0 0 15px 0;">📱 Recent Notifications</h3>
-                <div style="background: rgba(255,255,255,0.1); border-radius: 8px; padding: 15px; max-height: 300px; overflow-y: auto;">
-                    {''.join(notification_items)}
-                </div>
-            </div>
-        '''
-    else:
-        notifications_html = f'''
-            <div style="margin: 20px 0; padding: 20px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
-                <h3 style="color: white; margin: 0 0 15px 0;">📱 Recent Notifications</h3>
-                <div style="background: rgba(255,255,255,0.1); border-radius: 8px; padding: 15px;">
-                    <p style="color: rgba(255,255,255,0.8); text-align: center; font-style: italic; margin: 0;">No notifications sent yet</p>
-                </div>
-            </div>
-        '''
 
     html_content = f"""
     <!DOCTYPE html>
@@ -1404,8 +1369,6 @@ async def root():
                 {f'<div class="emotions">' + ''.join([f'<span class="emotion-tag">{e}</span>' for e in audio_stats['recent_emotions'][:5]]) + '</div>' if audio_stats['recent_emotions'] else ''}
             </div>
             ''' if audio_stats['last_request_time'] else '<p style="color: #666; margin: 20px 0;">No audio received yet. Waiting for device to send data...</p>'}
-
-            {notifications_html}
 
             {emotion_stats_html}
 
