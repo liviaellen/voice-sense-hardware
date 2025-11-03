@@ -1,0 +1,416 @@
+# Omi App Configuration Guide
+
+## App Configuration URLs Explained
+
+When creating an External Integration app in Omi, you'll be asked for several URLs. Here's what each one does and what to put:
+
+---
+
+## 1. Webhook URL (REQUIRED for some capabilities)
+
+**What it is:** The endpoint Omi calls when events happen (like new conversations, memories created, etc.)
+
+**For your use case (audio streaming):**
+```
+NOT NEEDED - Leave blank or use: https://audio-sentiment-profiling.onrender.com/webhook
+```
+
+**Why not needed?** You're receiving audio via the real-time audio streaming endpoint (`/audio`), not webhooks.
+
+**If you add it anyway (for future features):**
+```
+https://audio-sentiment-profiling.onrender.com/webhook
+```
+
+---
+
+## 2. App Home URL (OPTIONAL)
+
+**What it is:** A web page users see when they open your app in the Omi app
+
+**Options:**
+
+### Option A: Link to your dashboard
+```
+https://audio-sentiment-profiling.onrender.com/
+```
+Users will see your emotion analysis dashboard
+
+### Option B: Create a custom page
+```
+https://audio-sentiment-profiling.onrender.com/app-home
+```
+Show app info, settings, or instructions
+
+### Option C: Leave blank
+If you don't need a web interface for users
+
+**Recommended for now:**
+```
+https://audio-sentiment-profiling.onrender.com/
+```
+
+---
+
+## 3. Setup Auth URL (IF REQUIRED)
+
+**What it is:** OAuth 2.0 authentication endpoint for connecting user accounts
+
+**For your use case:**
+```
+NOT NEEDED - Leave blank
+```
+
+**Why not needed?**
+- You're using server-to-server authentication (API keys)
+- Not connecting external user accounts (like Google, Spotify, etc.)
+
+**Only needed if:**
+- You need users to log in to YOUR service
+- You're integrating with external APIs that need OAuth
+- You're storing user-specific data in your own database
+
+---
+
+## 4. Setup Completed URL (OPTIONAL)
+
+**What it is:** Where to redirect users after they enable your app
+
+**Options:**
+
+### Option A: Back to Omi app
+```
+omi://apps
+```
+(This is a deep link back to Omi's app list)
+
+### Option B: Your success page
+```
+https://audio-sentiment-profiling.onrender.com/setup-complete
+```
+
+### Option C: Leave blank
+Users stay on current screen
+
+**Recommended:**
+```
+Leave blank or use: omi://apps
+```
+
+---
+
+## Complete Configuration Example
+
+### For Your Emotion AI Notifier App:
+
+```
+App Name: Emotion AI Notifier
+Description: Real-time emotion detection from audio with customizable alerts
+
+Capabilities:
+✅ External Integration
+  ✅ Notifications
+  ✅ Create Memories (optional)
+
+URLs:
+┌─────────────────────────────┬──────────────────────────┐
+│ Webhook URL                 │ (leave blank)            │
+│ App Home URL               │ https://audio-sentiment- │
+│                            │ profiling.onrender.com/  │
+│ Setup Auth URL             │ (leave blank)            │
+│ Setup Completed URL        │ (leave blank)            │
+└─────────────────────────────┴──────────────────────────┘
+```
+
+---
+
+## How to Get User Info (UID)
+
+### Method 1: From Audio Endpoint (Current Setup)
+
+The `uid` comes from the Omi device automatically!
+
+**When Omi sends audio to your server:**
+```
+POST https://audio-sentiment-profiling.onrender.com/audio?uid=XqBKRatqZ5MS4tsX84VfBEne16W2&sample_rate=16000
+```
+
+The `uid` parameter is **automatically added by Omi** - it's the user's unique ID.
+
+**In your code (already works):**
+```python
+@app.post("/audio")
+async def handle_audio_stream(
+    uid: str = Query(..., description="User ID"),  # ← Omi provides this
+    ...
+):
+    # uid is available here automatically!
+    print(f"Processing audio for user: {uid}")
+```
+
+---
+
+### Method 2: From Webhook (If You Add One)
+
+If you implement webhooks, Omi sends user info in the webhook payload:
+
+```json
+{
+  "uid": "user_unique_id_here",
+  "event": "conversation.created",
+  "data": { ... }
+}
+```
+
+---
+
+### Method 3: OAuth Flow (Advanced - Not Needed for You)
+
+Only needed if users need to log in to YOUR service:
+
+1. User clicks "Connect" in Omi app
+2. Redirected to your Setup Auth URL
+3. User logs in to YOUR service
+4. You generate a token
+5. Send token back to Omi
+6. Omi includes token in future requests
+
+**Example flow:**
+```
+User → Omi app → Your login page → User authenticates → Token → Omi
+```
+
+**Not needed because:**
+- You don't have user accounts
+- No external service to connect
+- API keys handle authentication
+
+---
+
+## Minimal Setup (What You Actually Need)
+
+### Required:
+1. ✅ **App Name:** "Emotion AI Notifier"
+2. ✅ **Capabilities:** External Integration → Notifications
+3. ✅ **API Key:** Generated by Omi (copy to `.env`)
+
+### Optional (Recommended):
+4. ✅ **App Home URL:** `https://audio-sentiment-profiling.onrender.com/`
+
+### Not Needed:
+5. ❌ **Webhook URL:** Leave blank
+6. ❌ **Setup Auth URL:** Leave blank
+7. ❌ **Setup Completed URL:** Leave blank
+
+---
+
+## Getting User UID - Real Example
+
+### Scenario: User enables your app and starts recording
+
+**Step 1:** User enables "Emotion AI Notifier" in Omi app
+
+**Step 2:** User's Omi device records audio
+
+**Step 3:** Omi automatically sends audio with user's UID:
+```http
+POST https://audio-sentiment-profiling.onrender.com/audio?uid=XqBKRatqZ5MS4tsX84VfBEne16W2&sample_rate=16000
+Content-Type: application/octet-stream
+
+[binary audio data]
+```
+
+**Step 4:** Your server receives it:
+```python
+uid = "XqBKRatqZ5MS4tsX84VfBEne16W2"  # Automatically from query param
+```
+
+**Step 5:** Send notification back to same user:
+```python
+await send_omi_notification(
+    uid="XqBKRatqZ5MS4tsX84VfBEne16W2",  # Same UID from request
+    message="🎭 Emotion Alert: Detected Anger"
+)
+```
+
+---
+
+## User Flow Diagram
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  User Opens Omi App                                     │
+└────────────┬────────────────────────────────────────────┘
+             │
+             ↓
+┌─────────────────────────────────────────────────────────┐
+│  Goes to Apps → "Emotion AI Notifier" → Enable         │
+└────────────┬────────────────────────────────────────────┘
+             │
+             ↓
+┌─────────────────────────────────────────────────────────┐
+│  Omi stores: user_id → your_app_id association         │
+└────────────┬────────────────────────────────────────────┘
+             │
+             ↓
+┌─────────────────────────────────────────────────────────┐
+│  User records audio with Omi device                     │
+└────────────┬────────────────────────────────────────────┘
+             │
+             ↓
+┌─────────────────────────────────────────────────────────┐
+│  Omi sends: POST /audio?uid=user123&sample_rate=16000  │
+└────────────┬────────────────────────────────────────────┘
+             │
+             ↓
+┌─────────────────────────────────────────────────────────┐
+│  Your server analyzes → Detects Anger                   │
+└────────────┬────────────────────────────────────────────┘
+             │
+             ↓
+┌─────────────────────────────────────────────────────────┐
+│  Your server sends notification to uid=user123          │
+└────────────┬────────────────────────────────────────────┘
+             │
+             ↓
+┌─────────────────────────────────────────────────────────┐
+│  User receives: "🎭 Emotion Alert: Detected Anger" 📱   │
+└─────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Testing User UID
+
+### Method 1: Check Server Logs
+
+In Render logs, you'll see:
+```
+Analyzing audio with Hume AI for user XqBKRatqZ5MS4tsX84VfBEne16W2
+Processing audio for user: XqBKRatqZ5MS4tsX84VfBEne16W2
+```
+
+### Method 2: Check Dashboard
+
+Visit: https://audio-sentiment-profiling.onrender.com/
+
+Look for:
+- **Last UID:** Shows most recent user
+
+### Method 3: API Response
+
+When you test with curl:
+```bash
+curl "https://audio-sentiment-profiling.onrender.com/audio?uid=my_test_user&sample_rate=16000" \
+  --data-binary "@audio.wav"
+```
+
+Response includes:
+```json
+{
+  "uid": "my_test_user",
+  ...
+}
+```
+
+---
+
+## Advanced: Multiple Users
+
+### How it works automatically:
+
+**User A (UID: user_abc):**
+```
+Omi device A → POST /audio?uid=user_abc → Notification to user_abc
+```
+
+**User B (UID: user_xyz):**
+```
+Omi device B → POST /audio?uid=user_xyz → Notification to user_xyz
+```
+
+**Your server doesn't need to track users!** Omi handles:
+- ✅ User identification (UID in query param)
+- ✅ User-to-app association
+- ✅ Notification routing
+
+You just:
+1. ✅ Receive audio with UID
+2. ✅ Analyze emotions
+3. ✅ Send notification back to same UID
+
+---
+
+## Common Questions
+
+### Q: Do I need a user database?
+**A:** No! Omi provides UID in every request.
+
+### Q: How do users "sign up"?
+**A:** They enable your app in the Omi mobile app. That's it!
+
+### Q: Can I customize per-user settings?
+**A:** Yes, but you'd need to store preferences by UID in your database.
+
+**Example:**
+```python
+# Store in database (optional, advanced)
+user_settings = {
+    "user_abc": {"emotion_filters": {"Anger": 0.7}},
+    "user_xyz": {"emotion_filters": {"Sadness": 0.6}}
+}
+```
+
+### Q: What if I want user names, not just UIDs?
+**A:** You'd need to call Omi API to get user profile info (requires OAuth setup).
+
+For notifications, UID is sufficient!
+
+---
+
+## Summary: What You Need
+
+### ✅ Required Configuration:
+
+1. **Create Omi App:**
+   - Name: "Emotion AI Notifier"
+   - Capabilities: Notifications
+   - Generate API Key
+
+2. **Add to Render Environment:**
+   ```
+   OMI_APP_ID=your_app_id
+   OMI_API_KEY=sk_your_api_key
+   ```
+
+3. **Configure Omi Device:**
+   ```
+   https://audio-sentiment-profiling.onrender.com/audio?send_notification=true
+   ```
+
+### ❌ NOT Needed:
+
+- ❌ Webhook URL (unless you want events)
+- ❌ Setup Auth URL (no OAuth needed)
+- ❌ User database (Omi provides UID)
+- ❌ Custom authentication (API keys are enough)
+
+### 📝 Optional but Nice:
+
+- App Home URL: `https://audio-sentiment-profiling.onrender.com/`
+
+---
+
+## Quick Start Checklist
+
+- [ ] Create Omi app in mobile app
+- [ ] Enable "External Integration" + "Notifications"
+- [ ] Generate API Key
+- [ ] Copy App ID and API Key
+- [ ] Add to Render environment variables
+- [ ] Redeploy Render service
+- [ ] Configure Omi device URL
+- [ ] Enable app in Omi mobile app
+- [ ] Test by speaking into Omi device!
+
+That's it! The UID comes automatically with each audio request. 🎉
